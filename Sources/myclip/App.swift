@@ -2,18 +2,6 @@ import SwiftUI
 import AppKit
 import ServiceManagement
 
-@main
-struct MyClipApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-
-    // No real scene — settings opens via a custom NSWindow from AppDelegate
-    // because SwiftUI's `Settings` scene + .accessory activation policy is
-    // unreliable for menu-bar apps.
-    var body: some Scene {
-        Settings { EmptyView() }
-    }
-}
-
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store: HistoryStore

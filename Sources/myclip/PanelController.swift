@@ -3,6 +3,14 @@ import SwiftUI
 import ApplicationServices
 import Carbon.HIToolbox
 
+private extension String {
+    /// Minimal shell-quoting for a path going through `sh -c`. We only need
+    /// to wrap in single quotes and escape any embedded single quotes.
+    var shellQuoted: String {
+        "'" + replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
 @MainActor
 final class PanelController {
     private var panel: NSPanel?
@@ -133,13 +141,17 @@ final class PanelController {
     /// Synthesise a ⌘V keystroke into whatever app is currently frontmost.
     /// Looks up the keyCode for "v" in the active keyboard layout so this
     /// works on Dvorak / Colemak / AZERTY, not just US QWERTY.
-    /// Requires Accessibility permission; on first call macOS shows the
-    /// standard prompt and we silently no-op until granted.
+    /// Requires Accessibility permission — if not granted we surface a
+    /// helpful alert (with Quit-and-Relaunch) rather than silently failing.
     private static func simulatePaste() {
+        // Check without prompting — we'll show our own clearer alert.
         let trusted = AXIsProcessTrustedWithOptions([
-            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false
         ] as CFDictionary)
-        guard trusted else { return }
+        guard trusted else {
+            showAccessibilityHelp()
+            return
+        }
 
         // Fall back to position 9 (V on US QWERTY) if layout lookup fails.
         let vKey = keyCodeForCharacter("v") ?? 9
@@ -152,6 +164,53 @@ final class PanelController {
             up.flags = .maskCommand
             up.post(tap: .cghidEventTap)
         }
+    }
+
+    /// macOS caches `AXIsProcessTrusted` per-process and ad-hoc-signed builds
+    /// produce a different code signature on every release, so an upgraded
+    /// app sees a stale "untrusted" state even when System Settings shows the
+    /// toggle on. The fix is for the user to remove the entry + relaunch.
+    private static func showAccessibilityHelp() {
+        let alert = NSAlert()
+        alert.messageText = "myclip needs Accessibility access to paste."
+        alert.informativeText = """
+            Open System Settings → Privacy & Security → Accessibility and \
+            turn myclip on, then quit and reopen myclip so the new permission \
+            takes effect.
+
+            Already toggled on? After an upgrade, the previous install's grant \
+            goes stale. Click the – button next to myclip to remove it from \
+            the list, then come back and try again — macOS will re-prompt \
+            cleanly.
+            """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Accessibility Settings")
+        alert.addButton(withTitle: "Quit & Relaunch")
+        alert.addButton(withTitle: "Later")
+
+        NSApp.activate(ignoringOtherApps: true)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        case .alertSecondButtonReturn:
+            quitAndRelaunch()
+        default:
+            break
+        }
+    }
+
+    private static func quitAndRelaunch() {
+        let bundlePath = Bundle.main.bundleURL.path
+        // Wait a second after we quit, then re-open the bundle. The sleep
+        // gives our PID time to fully exit so `open` doesn't no-op against
+        // a stale instance.
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", "/bin/sleep 1 && /usr/bin/open \(bundlePath.shellQuoted)"]
+        try? task.run()
+        NSApp.terminate(nil)
     }
 
     /// Find the physical keyCode that produces `char` under the current
