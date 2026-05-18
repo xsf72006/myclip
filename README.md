@@ -42,7 +42,7 @@ than the app itself.
 ### via Homebrew (recommended)
 
 ```sh
-brew tap xsf72006/myclip
+brew tap xsf72006/tap
 brew install --cask myclip
 ```
 

@@ -60,7 +60,7 @@ jobs:
 
             **Homebrew (recommended):**
             ```sh
-            brew tap xsf72006/myclip
+            brew tap xsf72006/tap
             brew install --cask myclip
             ```
 
@@ -99,7 +99,7 @@ jobs:
             exit 0
           fi
 
-          git clone "https://x-access-token:${TAP_PUSH_TOKEN}@github.com/xsf72006/homebrew-myclip.git" tap
+          git clone "https://x-access-token:${TAP_PUSH_TOKEN}@github.com/xsf72006/homebrew-tap.git" tap
           cd tap
 
           # Update version and sha256 fields. Use a python rewrite — sed gets
