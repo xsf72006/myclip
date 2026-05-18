@@ -6,7 +6,7 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
 if [ -f "$PLIST" ]; then
     echo "==> unloading LaunchAgent"
-    launchctl unload "$PLIST" 2>/dev/null || true
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
     rm -f "$PLIST"
 fi
 

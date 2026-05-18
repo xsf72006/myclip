@@ -15,6 +15,11 @@ final class HistoryStore: ObservableObject {
     private let storeDir: URL
     private let metaFile: URL
 
+    // Small LRU image cache so PreviewPane doesn't re-decode the same PNG
+    // on every redraw. Capped to avoid holding 50 large screenshots in RAM.
+    private static let imageCacheCap = 5
+    private var imageCache: [(id: UUID, image: NSImage)] = []
+
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         storeDir = support.appendingPathComponent("myclip", isDirectory: true)
@@ -61,6 +66,23 @@ final class HistoryStore: ObservableObject {
         return storeDir.appendingPathComponent(name)
     }
 
+    /// Cached NSImage loader. Returns the same instance across redraws,
+    /// promoting to most-recent on each hit; evicts the oldest beyond cap.
+    func image(for item: ClipItem) -> NSImage? {
+        if let idx = imageCache.firstIndex(where: { $0.id == item.id }) {
+            let entry = imageCache.remove(at: idx)
+            imageCache.append(entry)
+            return entry.image
+        }
+        guard let url = imageURL(for: item),
+              let img = NSImage(contentsOf: url) else { return nil }
+        imageCache.append((item.id, img))
+        if imageCache.count > Self.imageCacheCap {
+            imageCache.removeFirst()
+        }
+        return img
+    }
+
     func saveImage(_ data: Data) throws -> String {
         let name = "img-\(UUID().uuidString).png"
         try data.write(to: storeDir.appendingPathComponent(name))
@@ -68,6 +90,7 @@ final class HistoryStore: ObservableObject {
     }
 
     private func deleteImageFile(_ item: ClipItem) {
+        imageCache.removeAll { $0.id == item.id }
         if let url = imageURL(for: item) {
             try? FileManager.default.removeItem(at: url)
         }

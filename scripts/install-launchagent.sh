@@ -25,8 +25,16 @@ mkdir -p "$HOME/Library/LaunchAgents"
 sed "s|__EXEC_PATH__|$DEST_APP/Contents/MacOS/$APP_NAME|g" "$PLIST_SRC" > "$PLIST_DEST"
 
 echo "==> (re)loading LaunchAgent"
-launchctl unload "$PLIST_DEST" 2>/dev/null || true
-launchctl load "$PLIST_DEST"
+UID_NUM="$(id -u)"
+launchctl bootout  "gui/$UID_NUM/$LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$UID_NUM" "$PLIST_DEST"
+
+# Force LaunchServices to re-index the bundle so the icon refreshes
+# immediately in Finder / System Settings (otherwise needs a logout).
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [ -x "$LSREGISTER" ]; then
+    "$LSREGISTER" -f "$DEST_APP" >/dev/null 2>&1 || true
+fi
 
 echo
 echo "myclip is installed and running."

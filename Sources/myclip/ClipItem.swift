@@ -16,8 +16,10 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
         ClipItem(id: UUID(), kind: .text, createdAt: Date(), text: s, imageFilename: nil)
     }
 
-    static func image(filename: String, title: String) -> ClipItem {
-        ClipItem(id: UUID(), kind: .image, createdAt: Date(), text: title, imageFilename: filename)
+    static func image(filename: String, byteCount: Int) -> ClipItem {
+        let size = ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
+        return ClipItem(id: UUID(), kind: .image, createdAt: Date(),
+                        text: "Image · \(size)", imageFilename: filename)
     }
 
     var displayTitle: String {

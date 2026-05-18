@@ -4,14 +4,13 @@ import AppKit
 struct ContentView: View {
     @ObservedObject var store: HistoryStore
     @ObservedObject var coordinator: PanelCoordinator
-    let onUse: (ClipItem) -> Void
+    let onPaste: (ClipItem) -> Void
+    let onCopy:  (ClipItem) -> Void
 
     @FocusState private var searchFocused: Bool
 
-    private static let defaultVisible = 10
-
-    var filtered: [ClipItem] {
-        coordinator.filteredItems(from: store.items)
+    var visible: [ClipItem] {
+        coordinator.visibleItems(from: store.items)
     }
 
     var body: some View {
@@ -19,7 +18,7 @@ struct ContentView: View {
             searchBar
             Divider()
             HStack(spacing: 0) {
-                listView.frame(width: 280)
+                listColumn.frame(width: 280)
                 Divider()
                 previewArea
             }
@@ -34,6 +33,9 @@ struct ContentView: View {
             focusSearchSoon()
         }
         .onChange(of: coordinator.query) { _, _ in
+            coordinator.ensureValidSelection(in: store.items)
+        }
+        .onChange(of: coordinator.showAll) { _, _ in
             coordinator.ensureValidSelection(in: store.items)
         }
         .onChange(of: store.items) { _, _ in
@@ -54,6 +56,7 @@ struct ContentView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             TextField("Search clipboard history…", text: $coordinator.query)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
@@ -65,6 +68,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Clear search")
+                .accessibilityLabel("Clear search")
             }
             if !store.items.isEmpty {
                 Button(action: confirmAndClear) {
@@ -73,28 +77,38 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Clear all history")
+                .accessibilityLabel("Clear all history")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
     }
 
-    private func confirmAndClear() {
-        let count = store.items.count
-        let alert = NSAlert()
-        alert.messageText = "Clear all \(count) item\(count == 1 ? "" : "s")?"
-        alert.informativeText = "This deletes every entry in myclip history and cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Clear")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn {
-            store.clear()
+    private var listColumn: some View {
+        VStack(spacing: 0) {
+            list
+            if coordinator.canExpand(in: store.items) {
+                Divider()
+                Button {
+                    coordinator.showAll = true
+                } label: {
+                    HStack {
+                        Spacer()
+                        Text("Show all \(store.items.count) items")
+                            .font(.caption)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.borderless)
+                .padding(.vertical, 6)
+                .accessibilityLabel("Show all \(store.items.count) items")
+            }
         }
     }
 
-    private var listView: some View {
+    private var list: some View {
         List(selection: $coordinator.selection) {
-            ForEach(filtered) { item in
+            ForEach(visible) { item in
                 HStack(spacing: 8) {
                     Image(systemName: item.kind == .image ? "photo" : "doc.text")
                         .foregroundStyle(.secondary)
@@ -104,14 +118,16 @@ struct ContentView: View {
                 }
                 .tag(Optional(item.id))
                 .contextMenu {
-                    Button("Copy") { onUse(item) }
+                    Button("Paste into previous app") { onPaste(item) }
+                    Button("Copy")                    { onCopy(item) }
+                    Divider()
                     Button("Remove", role: .destructive) { store.remove(item) }
                 }
             }
         }
         .listStyle(.sidebar)
-        .overlay(alignment: .bottom) {
-            if filtered.isEmpty {
+        .overlay(alignment: .center) {
+            if visible.isEmpty {
                 Text(coordinator.query.isEmpty ? "No history yet" : "No matches")
                     .foregroundStyle(.secondary)
                     .padding()
@@ -129,6 +145,22 @@ struct ContentView: View {
             Text("No selection")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func confirmAndClear() {
+        let count = store.items.count
+        let alert = NSAlert()
+        alert.messageText = "Clear all \(count) item\(count == 1 ? "" : "s")?"
+        alert.informativeText = "This deletes every entry in myclip history and cannot be undone."
+        alert.alertStyle = .warning
+        // Cancel first → it's the default (responds to Enter) and sits on the
+        // right per macOS HIG. Clear is the explicit destructive choice.
+        alert.addButton(withTitle: "Cancel")
+        let clearBtn = alert.addButton(withTitle: "Clear")
+        clearBtn.hasDestructiveAction = true
+        if alert.runModal() == .alertSecondButtonReturn {
+            store.clear()
         }
     }
 }

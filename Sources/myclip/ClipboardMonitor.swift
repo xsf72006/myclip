@@ -15,10 +15,12 @@ final class ClipboardMonitor {
 
     func start() {
         timer?.invalidate()
-        let t = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // Manual Timer + .common only; Timer.scheduledTimer would also
+        // register in .default, leaving us in two modes redundantly.
+        let t = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.poll() }
         }
-        RunLoop.current.add(t, forMode: .common)
+        RunLoop.main.add(t, forMode: .common)
         timer = t
     }
 
@@ -56,14 +58,15 @@ final class ClipboardMonitor {
 
         guard ClipboardFilter.shouldAccept(types: types, text: text, image: imageData) else { return }
 
+        // Match the filter's notion of validity (trim-empty for text). If both
+        // text and image are present and valid, text wins as the primary rep.
         let candidate: ClipItem
-        if let text, !text.isEmpty {
+        if ClipboardFilter.hasValidText(text), let text {
             candidate = .text(text)
-        } else if let imageData {
+        } else if ClipboardFilter.hasValidImage(imageData), let imageData {
             do {
                 let fname = try store.saveImage(imageData)
-                let size = ByteCountFormatter.string(fromByteCount: Int64(imageData.count), countStyle: .file)
-                candidate = .image(filename: fname, title: "Image · \(size)")
+                candidate = .image(filename: fname, byteCount: imageData.count)
             } catch {
                 return
             }

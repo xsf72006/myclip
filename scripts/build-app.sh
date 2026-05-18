@@ -12,8 +12,9 @@ MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
 
 echo "==> swift build -c release"
-swift build -c release --arch arm64 --arch x86_64 2>/dev/null \
-    || swift build -c release
+# Single-arch build for the current machine. Users build locally, so a
+# universal binary isn't worth hiding error output for.
+swift build -c release
 
 BIN_PATH="$(swift build -c release --show-bin-path)"
 

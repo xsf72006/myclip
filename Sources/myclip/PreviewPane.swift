@@ -32,8 +32,7 @@ struct PreviewPane: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         case .image:
-            if let url = store.imageURL(for: item),
-               let nsImage = NSImage(contentsOf: url) {
+            if let nsImage = store.image(for: item) {
                 Image(nsImage: nsImage)
                     .resizable()
                     .scaledToFit()

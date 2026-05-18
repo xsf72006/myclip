@@ -8,7 +8,7 @@ let package = Package(
         .executable(name: "myclip", targets: ["myclip"])
     ],
     dependencies: [
-        .package(url: "https://github.com/soffes/HotKey", from: "0.2.0")
+        .package(url: "https://github.com/soffes/HotKey", .upToNextMinor(from: "0.2.1"))
     ],
     targets: [
         .executableTarget(

@@ -20,12 +20,18 @@ enum ClipboardFilter {
                              text: String?,
                              image: Data?) -> Bool {
         if !SkipPasteboardTypes.all.isDisjoint(with: types) { return false }
-        if let text {
-            return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-        if let image {
-            return image.count <= maxImageBytes
-        }
-        return false
+        // Validate text and image independently so an image with an empty
+        // text representation alongside it still gets accepted.
+        return hasValidText(text) || hasValidImage(image)
+    }
+
+    static func hasValidText(_ text: String?) -> Bool {
+        guard let text else { return false }
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func hasValidImage(_ image: Data?) -> Bool {
+        guard let image else { return false }
+        return image.count <= maxImageBytes
     }
 }
