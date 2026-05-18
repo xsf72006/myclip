@@ -12,19 +12,20 @@ enum SkipPasteboardTypes {
 }
 
 enum ClipboardFilter {
-    // ─────────────────────────────────────────────────────────────────────
-    // YOUR CALL — see README "Customising the filter".
-    //
-    // The default honours the nspasteboard.org convention so passwords from
-    // Apple Passwords / 1Password / Bitwarden are skipped, and rejects empty
-    // payloads. Extend if you want to: cap image size, drop pure-whitespace
-    // strings, blocklist particular source apps, etc.
-    // ─────────────────────────────────────────────────────────────────────
+    /// Cap image payloads to keep ~/Library/Application Support from bloating
+    /// when full-screen screenshots land on the clipboard.
+    static let maxImageBytes = 5 * 1024 * 1024  // 5 MB
+
     static func shouldAccept(types: Set<NSPasteboard.PasteboardType>,
                              text: String?,
                              image: Data?) -> Bool {
         if !SkipPasteboardTypes.all.isDisjoint(with: types) { return false }
-        if text == nil && image == nil { return false }
-        return true
+        if let text {
+            return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if let image {
+            return image.count <= maxImageBytes
+        }
+        return false
     }
 }

@@ -12,29 +12,35 @@ struct MyClipApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let store = HistoryStore()
-    var monitor: ClipboardMonitor!
-    var panelController: PanelController!
-    var hotkey: HotKeyManager!
-    var statusItem: NSStatusItem!
+    // Built eagerly in init() so they exist before SwiftUI evaluates the
+    // Settings scene body (which happens before applicationDidFinishLaunching).
+    let store: HistoryStore
+    let panelController: PanelController
+    let hotkey: HotKeyManager
     lazy var settingsModel: SettingsModel = SettingsModel(hotkey: hotkey)
+
+    private var monitor: ClipboardMonitor?
+    private var statusItem: NSStatusItem?
+
+    override init() {
+        self.store = HistoryStore()
+        self.panelController = PanelController(store: store)
+        self.hotkey = HotKeyManager(panelController: panelController)
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-
-        panelController = PanelController(store: store)
         monitor = ClipboardMonitor(store: store)
-        monitor.start()
-
-        hotkey = HotKeyManager(panelController: panelController)
+        monitor?.start()
         hotkey.register()
-
         setupStatusItem()
     }
 
     private func setupStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = item
+        if let button = item.button {
             button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "myclip")
         }
         let menu = NSMenu()
@@ -54,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit myclip", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
-        statusItem.menu = menu
+        item.menu = menu
     }
 
     @objc private func showPanel() { panelController.show() }

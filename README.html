@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>myclip — Lightweight Clipboard History for macOS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #fff;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0d1117;
+                color: #e6edf3;
+            }
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+            gap: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        aside {
+            background: #f6f8fa;
+            border-right: 1px solid #d0d7de;
+            padding: 2rem 1rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            aside {
+                background: #161b22;
+                border-right-color: #30363d;
+            }
+        }
+
+        @media (max-width: 768px) {
+            aside {
+                display: none;
+            }
+        }
+
+        .toc-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #656d76;
+            margin-bottom: 1rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .toc-title {
+                color: #8b949e;
+            }
+        }
+
+        .toc {
+            list-style: none;
+        }
+
+        .toc li {
+            margin: 0.5rem 0;
+        }
+
+        .toc a {
+            color: #0969da;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: #1f6feb;
+            text-decoration: underline;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .toc a {
+                color: #58a6ff;
+            }
+
+            .toc a:hover {
+                color: #79c0ff;
+            }
+        }
+
+        main {
+            padding: 3rem 2rem;
+            max-width: 880px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 640px) {
+            main {
+                padding: 2rem 1rem;
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            border-bottom: 1px solid #d0d7de;
+            padding-bottom: 0.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            h2 {
+                border-bottom-color: #30363d;
+            }
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #656d76;
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .subtitle {
+                color: #8b949e;
+            }
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            code {
+                background: #161b22;
+                color: #e6edf3;
+            }
+        }
+
+        pre {
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            pre {
+                background: #0d1117;
+                border-color: #30363d;
+            }
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            color: inherit;
+        }
+
+        .hljs {
+            background: transparent;
+            color: inherit;
+        }
+
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin: 0.5rem 0;
+        }
+
+        strong {
+            font-weight: 600;
+        }
+
+        a {
+            color: #0969da;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            a {
+                color: #58a6ff;
+            }
+        }
+
+        .diagram {
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .diagram {
+                background: #0d1117;
+                border-color: #30363d;
+                color: #e6edf3;
+            }
+        }
+
+        .feature-list {
+            margin: 1.5rem 0;
+        }
+
+        .feature-list li {
+            margin: 0.8rem 0;
+        }
+
+        .feature-list strong {
+            color: #0969da;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .feature-list strong {
+                color: #58a6ff;
+            }
+        }
+
+        blockquote {
+            border-left: 4px solid #d0d7de;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #656d76;
+            font-style: italic;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            blockquote {
+                border-left-color: #30363d;
+                color: #8b949e;
+            }
+        }
+
+        .hero-stat {
+            display: inline-block;
+            background: #f6f8fa;
+            padding: 0.5em 0.75em;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .hero-stat {
+                background: #161b22;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside>
+            <div class="toc-title">Contents</div>
+            <ul class="toc">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#requirements">Requirements</a></li>
+                <li><a href="#quick-install">Quick Install</a></li>
+                <li><a href="#build">Just Build It</a></li>
+                <li><a href="#hotkey">Configure Hotkey</a></li>
+                <li><a href="#filter">Customise Filter</a></li>
+                <li><a href="#data">Where Data Lives</a></li>
+                <li><a href="#uninstall">Uninstall</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#layout">Project Layout</a></li>
+                <li><a href="#license">License</a></li>
+            </ul>
+        </aside>
+
+        <main>
+            <h1>myclip</h1>
+            <p class="subtitle">A lightweight, native clipboard history for macOS. Press <strong>⌘⇧C</strong> to pop up a small panel showing your recent copies (text and images), search through them, and pick one to paste. Single binary, no Electron, no background daemons other than the app itself.</p>
+
+            <div class="diagram">┌──────────────────────────────────────────────────────┐
+│ 🔍  Search clipboard history…                        │
+├───────────────────┬──────────────────────────────────┤
+│ 📄  Brew install …│  Text · 18 May, 21:14            │
+│ 📄  ssh dev-box   │  ─────────────────────────────── │
+│ 🖼  Image · 412 KB│  brew install --cask raycast     │
+│ 📄  https://gith…│                                  │
+│ …                 │                                  │
+└───────────────────┴──────────────────────────────────┘</div>
+
+            <h2 id="features">Features</h2>
+            <ul class="feature-list">
+                <li><strong>Global hotkey</strong> to toggle the panel (default ⌘⇧C, configurable in Settings)</li>
+                <li><strong>Text and images</strong> — TIFF or PNG payloads are stored as PNG on disk</li>
+                <li><strong>Search</strong> the history with a fuzzy substring match</li>
+                <li><strong>Skips passwords</strong> generated by Apple Passwords, 1Password, Bitwarden, etc. by honouring the <a href="https://nspasteboard.org/">nspasteboard.org</a> convention</li>
+                <li><strong>Default visible: 10</strong>, max stored: <strong>50</strong> (oldest dropped automatically)</li>
+                <li><strong>Menu-bar only</strong> — no Dock icon, no menu bar shown for the app itself</li>
+                <li><strong>Auto-starts at login</strong> via a LaunchAgent</li>
+                <li><strong>Cmd+C still works</strong> — myclip uses a different chord and doesn't intercept system copy</li>
+            </ul>
+
+            <h2 id="requirements">Requirements</h2>
+            <ul>
+                <li>macOS <strong>14 (Sonoma)</strong> or later</li>
+                <li>Xcode <strong>Command Line Tools</strong> (<code>xcode-select --install</code> — full Xcode not required)</li>
+            </ul>
+
+            <h2 id="quick-install">Quick Install</h2>
+            <pre><code class="language-sh">git clone https://github.com/&lt;your-username&gt;/myclip.git
+cd myclip
+make install</code></pre>
+            <p>That builds the app, copies it to <code>/Applications/myclip.app</code>, and registers a LaunchAgent so it starts automatically every time you log in. The first launch puts a 📋 icon in your menu bar; press <strong>⌘⇧C</strong> to pop up the panel.</p>
+
+            <h2 id="build">Just Build It (don't install)</h2>
+            <pre><code class="language-sh">make build         # produces dist/myclip.app
+make run           # build and open</code></pre>
+
+            <h2 id="hotkey">Configure the Hotkey</h2>
+            <p>Click the 📋 menu-bar icon → <strong>Settings…</strong></p>
+            <p>You'll see the current shortcut and a row of presets (⌘⇧C, ⌘⇧V, ⌘⌥V, ⌃⇧Space). For anything else, type a spec like <code>command+shift+k</code> into the custom field and hit Apply. The recognised modifiers are <code>command</code>, <code>shift</code>, <code>option</code>, <code>control</code>.</p>
+
+            <h2 id="filter">Customising the Filter</h2>
+            <p>The default already skips password-manager pastes. If you want to tighten or loosen the rules — e.g. drop pure-whitespace text, cap image size, block a specific source app — you only edit one file:</p>
+            <pre><code>Sources/myclip/Pasteboard+Filters.swift</code></pre>
+            <p>The <code>shouldAccept(types:text:image:)</code> function is the single decision point. It's intentionally short (≈5 lines) so you can read it end-to-end and add a clause without touching anything else, then <code>make install</code> to roll out.</p>
+
+            <h2 id="data">Where Data Lives</h2>
+            <pre><code>~/Library/Application Support/myclip/
+    history.json        ← metadata (50 most recent items)
+    img-*.png           ← image payloads</code></pre>
+            <p><code>Clear history</code> in the menu bar wipes both. Uninstalling does <strong>not</strong> delete this folder so you don't lose history if you reinstall; remove it manually if you want a clean slate.</p>
+
+            <h2 id="uninstall">Uninstall</h2>
+            <pre><code class="language-sh">make uninstall</code></pre>
+            <p>Removes <code>/Applications/myclip.app</code> and the LaunchAgent. History folder is left in place (see above).</p>
+
+            <h2 id="troubleshooting">Troubleshooting</h2>
+
+            <h3>The hotkey doesn't fire.</h3>
+            <p>Another app may already own the same shortcut (some terminals grab ⌘⇧C). Change it under Settings → presets, or pick a custom combo.</p>
+
+            <h3>My passwords show up in history.</h3>
+            <p>The skip rule relies on the source app tagging the pasteboard with one of <code>org.nspasteboard.{Concealed,Transient,AutoGenerated}Type</code>. Apple Passwords, 1Password, and Bitwarden's desktop app all do; some browser extensions don't. If a specific app misbehaves, you can add an app-specific block in <code>Sources/myclip/Pasteboard+Filters.swift</code>.</p>
+
+            <h3>Logs.</h3>
+            <p>LaunchAgent stdout/stderr go to <code>/tmp/myclip.out.log</code> and <code>/tmp/myclip.err.log</code>.</p>
+
+            <h2 id="layout">Project Layout</h2>
+            <pre><code>.
+├── Package.swift                       Swift Package definition
+├── Bundle/Info.plist                   App bundle Info.plist (LSUIElement=true)
+├── LaunchAgents/com.myclip.agent.plist.template
+├── Makefile                            build / run / install / uninstall
+├── scripts/
+│   ├── build-app.sh                    swift build → dist/myclip.app
+│   ├── install-launchagent.sh          copy → /Applications + load LaunchAgent
+│   └── uninstall.sh
+└── Sources/myclip/
+    ├── App.swift                       @main, AppDelegate, menu-bar wiring
+    ├── ClipItem.swift                  Codable model for one history entry
+    ├── HistoryStore.swift              ring buffer + JSON persistence
+    ├── ClipboardMonitor.swift          NSPasteboard.changeCount poller (0.5s)
+    ├── Pasteboard+Filters.swift        ← single decision point for skip rules
+    ├── HotKeyManager.swift             global shortcut (HotKey lib + UserDefaults)
+    ├── PanelController.swift           NSPanel + key event monitor
+    ├── PanelCoordinator.swift          shared query / selection state
+    ├── ContentView.swift               SwiftUI top-level view
+    ├── PreviewPane.swift               right-side preview (text or image)
+    └── SettingsView.swift              hotkey configuration UI</code></pre>
+
+            <h2 id="license">License</h2>
+            <p>MIT</p>
+        </main>
+    </div>
+
+    <script>
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
