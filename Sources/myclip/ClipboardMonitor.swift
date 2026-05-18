@@ -17,8 +17,12 @@ final class ClipboardMonitor {
         timer?.invalidate()
         // Manual Timer + .common only; Timer.scheduledTimer would also
         // register in .default, leaving us in two modes redundantly.
+        // Timer fires on the runloop it's added to — main — so we can
+        // call into our MainActor-isolated poll() via assumeIsolated
+        // without a Task wrapper (which Swift 6 flags as recapturing self
+        // in concurrent code).
         let t = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.poll() }
+            MainActor.assumeIsolated { self?.poll() }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
