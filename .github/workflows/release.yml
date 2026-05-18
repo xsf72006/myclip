@@ -12,6 +12,10 @@ permissions:
 jobs:
   build:
     runs-on: macos-14
+    outputs:
+      version: ${{ steps.zip.outputs.version }}
+      sha: ${{ steps.zip.outputs.sha }}
+      artifact: ${{ steps.zip.outputs.artifact }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,3 +80,51 @@ jobs:
             ```
             ${{ steps.zip.outputs.sha }}
             ```
+
+  update-tap:
+    name: Auto-update Homebrew tap
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ needs.build.result == 'success' }}
+    steps:
+      - name: Update Casks/myclip.rb in homebrew-myclip
+        env:
+          TAP_PUSH_TOKEN: ${{ secrets.TAP_PUSH_TOKEN }}
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          if [ -z "$TAP_PUSH_TOKEN" ]; then
+            echo "::warning::TAP_PUSH_TOKEN secret not set — skipping cask auto-update."
+            echo "::warning::Edit Casks/myclip.rb in homebrew-myclip by hand, or see RUNBOOK.md for setup."
+            exit 0
+          fi
+
+          git clone "https://x-access-token:${TAP_PUSH_TOKEN}@github.com/xsf72006/homebrew-myclip.git" tap
+          cd tap
+
+          # Update version and sha256 fields. Use a python rewrite — sed gets
+          # fiddly with quoted lines and we want a clear diff if it didn't match.
+          python3 - <<'PY'
+          import os, re, pathlib, sys
+          path = pathlib.Path("Casks/myclip.rb")
+          src = path.read_text()
+          ver, sha = os.environ["VERSION"], os.environ["SHA"]
+          new = re.sub(r'^(\s*version\s+)"[^"]*"', rf'\1"{ver}"', src, count=1, flags=re.M)
+          new = re.sub(r'^(\s*sha256\s+)"[^"]*"', rf'\1"{sha}"', new, count=1, flags=re.M)
+          if new == src:
+              print("No-op: cask already at this version/sha; nothing to commit.")
+              sys.exit(0)
+          path.write_text(new)
+          PY
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/myclip.rb
+          git commit -m "myclip ${VERSION}"
+          git push origin HEAD:main
+          echo "==> Cask bumped to ${VERSION}"
