@@ -27,14 +27,26 @@ struct ContentView: View {
         .frame(minWidth: 600, minHeight: 360)
         .background(VisualEffectBlur())
         .onAppear {
-            searchFocused = true
+            focusSearchSoon()
             coordinator.ensureValidSelection(in: store.items)
+        }
+        .onChange(of: coordinator.focusToken) { _, _ in
+            focusSearchSoon()
         }
         .onChange(of: coordinator.query) { _, _ in
             coordinator.ensureValidSelection(in: store.items)
         }
         .onChange(of: store.items) { _, _ in
             coordinator.ensureValidSelection(in: store.items)
+        }
+    }
+
+    /// SwiftUI sets @FocusState before NSPanel finishes becoming key, so the
+    /// focus is silently dropped. A tiny delay sidesteps the race.
+    private func focusSearchSoon() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 40_000_000)
+            searchFocused = true
         }
     }
 

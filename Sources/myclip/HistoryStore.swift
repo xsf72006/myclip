@@ -7,6 +7,11 @@ final class HistoryStore: ObservableObject {
 
     @Published private(set) var items: [ClipItem] = []
 
+    /// Tracks the NSPasteboard.changeCount of writes we initiated ourselves
+    /// (paste-back). ClipboardMonitor consults this to avoid re-adding our
+    /// own clipboard writes as new history entries.
+    var lastSelfWrittenChangeCount: Int = -1
+
     private let storeDir: URL
     private let metaFile: URL
 
@@ -27,6 +32,15 @@ final class HistoryStore: ObservableObject {
             for d in dropped { deleteImageFile(d) }
             items = Array(items.prefix(Self.maxItems))
         }
+        save()
+    }
+
+    /// Promote an existing item to the top of the list (no new entry, no
+    /// timestamp change). Used when the user picks from history.
+    func moveToTop(_ item: ClipItem) {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }), idx != 0 else { return }
+        let element = items.remove(at: idx)
+        items.insert(element, at: 0)
         save()
     }
 

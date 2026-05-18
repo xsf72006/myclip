@@ -31,6 +31,12 @@ final class ClipboardMonitor {
         let cc = pasteboard.changeCount
         guard cc != lastChangeCount else { return }
         lastChangeCount = cc
+        // Skip writes we made ourselves during paste-back; otherwise picking
+        // an item from history would add a duplicate entry.
+        if let store, cc == store.lastSelfWrittenChangeCount {
+            store.lastSelfWrittenChangeCount = -1
+            return
+        }
         capture()
     }
 

@@ -4,6 +4,10 @@ import Foundation
 final class PanelCoordinator: ObservableObject {
     @Published var query: String = ""
     @Published var selection: ClipItem.ID?
+    /// Increments every time the panel is shown; ContentView observes this
+    /// to re-focus the search field on each show (onAppear may not re-fire
+    /// when the panel is hidden + shown without being recreated).
+    @Published var focusToken: Int = 0
 
     func filteredItems(from items: [ClipItem]) -> [ClipItem] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

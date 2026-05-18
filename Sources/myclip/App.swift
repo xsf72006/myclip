@@ -5,15 +5,16 @@ import AppKit
 struct MyClipApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
+    // No real scene — settings opens via a custom NSWindow from AppDelegate
+    // because SwiftUI's `Settings` scene + .accessory activation policy is
+    // unreliable for menu-bar apps.
     var body: some Scene {
-        Settings { SettingsView(model: delegate.settingsModel) }
+        Settings { EmptyView() }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Built eagerly in init() so they exist before SwiftUI evaluates the
-    // Settings scene body (which happens before applicationDidFinishLaunching).
     let store: HistoryStore
     let panelController: PanelController
     let hotkey: HotKeyManager
@@ -21,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var monitor: ClipboardMonitor?
     private var statusItem: NSStatusItem?
+    private var settingsWindow: NSWindow?
 
     override init() {
         self.store = HistoryStore()
@@ -65,13 +67,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showPanel() { panelController.show() }
     @objc private func clearHistory() { store.clear() }
+
     @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14, *) {
-            // macOS 14+ replaces the old `showSettingsWindow:` selector path.
-            // Use the public Settings scene by sending the same selector the
-            // menu sends from a normal app.
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if settingsWindow == nil {
+            let hosting = NSHostingController(rootView: SettingsView(model: settingsModel))
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 440, height: 260),
+                styleMask: [.titled, .closable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "myclip"
+            window.contentViewController = hosting
+            window.center()
+            window.isReleasedWhenClosed = false
+            settingsWindow = window
         }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 }
