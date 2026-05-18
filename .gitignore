@@ -7,4 +7,5 @@ Packages/
 dist/
 build/
 *.app
+*.html
 Package.resolved
