@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Regenerate app icon
+        run: swift scripts/generate-icon.swift
+
+      - name: Build .app bundle
+        run: bash scripts/build-app.sh
+
+      - name: Package + checksum
+        id: zip
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          VERSION="${REF_NAME#v}"
+          ARTIFACT="myclip-${VERSION}.zip"
+          (cd dist && /usr/bin/ditto -c -k --keepParent myclip.app "$ARTIFACT")
+          SHA="$(shasum -a 256 "dist/$ARTIFACT" | awk '{print $1}')"
+          echo "$SHA  $ARTIFACT" > "dist/${ARTIFACT}.sha256"
+          {
+            echo "version=$VERSION"
+            echo "artifact=$ARTIFACT"
+            echo "sha=$SHA"
+          } >> "$GITHUB_OUTPUT"
+          echo "==> SHA256: $SHA"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "myclip ${{ steps.zip.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            dist/${{ steps.zip.outputs.artifact }}
+            dist/${{ steps.zip.outputs.artifact }}.sha256
+          body: |
+            ## Install
+
+            **Homebrew (recommended):**
+            ```sh
+            brew tap xsf72006/myclip
+            brew install --cask myclip
+            ```
+
+            **Manual:**
+            1. Download the `.zip` below.
+            2. Unzip and drag `myclip.app` to `/Applications/`.
+            3. Open via Spotlight ("myclip"). If Gatekeeper blocks the first
+               launch (the build is ad-hoc signed), right-click the app and
+               choose **Open**.
+
+            The app puts a clipboard icon in the menu bar and registers itself
+            as a Login Item so it auto-starts on next login. Press the
+            shortcut (default: command + shift + c, reconfigurable in
+            Settings) to pop up the panel.
+
+            ## SHA256
+            ```
+            ${{ steps.zip.outputs.sha }}
+            ```

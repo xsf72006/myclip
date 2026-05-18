@@ -28,31 +28,50 @@ than the app itself.
   by honouring the [nspasteboard.org](https://nspasteboard.org/) convention
 - **Shows 10 most recent by default** — click **Show all** to expand to the full 50 (oldest dropped automatically)
 - **Menu-bar only** — no Dock icon, no menu bar shown for the app itself
-- **Auto-starts at login** via a LaunchAgent
+- **Auto-starts at login** — registers itself via `SMAppService.mainApp` (toggleable in Settings → Open at Login)
 - **Cmd+C still works** — myclip uses a different chord and doesn't intercept system copy
 
 ## Requirements
 
 - macOS **14 (Sonoma)** or later
-- Xcode **Command Line Tools** (`xcode-select --install` — full Xcode not required)
+- Building from source additionally needs Xcode **Command Line Tools**
+  (`xcode-select --install`) — the prebuilt binary needs nothing.
 
-## Quick install
+## Install
+
+### via Homebrew (recommended)
 
 ```sh
-git clone https://github.com/<your-username>/myclip.git
-cd myclip
-make install
+brew tap xsf72006/myclip
+brew install --cask myclip
 ```
 
-That builds the app, copies it to `/Applications/myclip.app`, and registers a
-LaunchAgent so it starts automatically every time you log in. The first launch
-puts a 📋 icon in your menu bar; press **⌘⇧C** to pop up the panel.
+### via download
 
-## Just build it (don't install)
+1. Grab the latest `myclip-X.Y.Z.zip` from the
+   [Releases page](https://github.com/xsf72006/myclip/releases/latest).
+2. Unzip and drag `myclip.app` into `/Applications/`.
+3. Open it once (Spotlight → "myclip" → Enter). The first launch may be blocked
+   by Gatekeeper (the build is ad-hoc signed, not Apple-notarised) — right-click
+   the app and choose **Open** to dismiss the warning.
+
+Either way, the app puts a 📋 icon in your menu bar and registers itself as a
+Login Item so it auto-starts on subsequent logins. Press **⌘⇧C** (configurable
+in Settings) to pop up the panel.
+
+### build from source
 
 ```sh
-make build         # produces dist/myclip.app
-make run           # build and open
+git clone https://github.com/xsf72006/myclip.git
+cd myclip
+make install     # builds, copies to /Applications, opens it
+```
+
+For development iteration:
+```sh
+make build       # produces dist/myclip.app
+make run         # build and open from dist/ (won't register as Login Item)
+make release-zip # build + ditto a .zip and print the SHA256
 ```
 
 ## Configure the hotkey
@@ -96,12 +115,21 @@ if you want a clean slate.
 
 ## Uninstall
 
+If installed via Homebrew:
 ```sh
-make uninstall
+brew uninstall --cask myclip
 ```
 
-Removes `/Applications/myclip.app` and the LaunchAgent. History folder is left
-in place (see above).
+If installed manually or via `make install`:
+```sh
+make uninstall                     # in the cloned repo
+# or just:
+rm -rf /Applications/myclip.app
+```
+
+The macOS Login Items entry is cleaned up by the system within a few logins.
+Your history at `~/Library/Application Support/myclip` is left in place; remove
+it manually if you want a clean slate.
 
 ## Troubleshooting
 
@@ -132,12 +160,12 @@ LaunchAgent stdout/stderr go to `/tmp/myclip.out.log` and `/tmp/myclip.err.log`.
 .
 ├── Package.swift                       Swift Package definition
 ├── Bundle/Info.plist                   App bundle Info.plist (LSUIElement=true)
-├── LaunchAgents/com.myclip.agent.plist.template
-├── Makefile                            build / run / install / uninstall
+├── Bundle/AppIcon.icns                 Generated app icon (regenerate via `make icon`)
+├── Makefile                            build / run / install / uninstall / release-zip
+├── .github/workflows/release.yml       Tag-push → build + GitHub Release
 ├── scripts/
 │   ├── build-app.sh                    swift build → dist/myclip.app
-│   ├── install-launchagent.sh          copy → /Applications + load LaunchAgent
-│   └── uninstall.sh
+│   └── generate-icon.swift             Renders Bundle/AppIcon.icns from SF Symbol
 └── Sources/myclip/
     ├── App.swift                       @main, AppDelegate, menu-bar wiring
     ├── ClipItem.swift                  Codable model for one history entry
