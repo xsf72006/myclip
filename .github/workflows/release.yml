@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.build.result == 'success' }}
     steps:
-      - name: Update Casks/myclip.rb in homebrew-myclip
+      - name: Update Casks/myclip.rb in homebrew-tap
         env:
           TAP_PUSH_TOKEN: ${{ secrets.TAP_PUSH_TOKEN }}
           VERSION: ${{ needs.build.outputs.version }}
@@ -95,7 +95,7 @@ jobs:
         run: |
           if [ -z "$TAP_PUSH_TOKEN" ]; then
             echo "::warning::TAP_PUSH_TOKEN secret not set — skipping cask auto-update."
-            echo "::warning::Edit Casks/myclip.rb in homebrew-myclip by hand, or see RUNBOOK.md for setup."
+            echo "::warning::Edit Casks/myclip.rb in homebrew-tap by hand, or see RUNBOOK.md for setup."
             exit 0
           fi
 
