@@ -64,10 +64,32 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Clear search")
+            }
+            if !store.items.isEmpty {
+                Button(action: confirmAndClear) {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear all history")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private func confirmAndClear() {
+        let count = store.items.count
+        let alert = NSAlert()
+        alert.messageText = "Clear all \(count) item\(count == 1 ? "" : "s")?"
+        alert.informativeText = "This deletes every entry in myclip history and cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            store.clear()
+        }
     }
 
     private var listView: some View {
