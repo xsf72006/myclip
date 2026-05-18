@@ -23,6 +23,9 @@ mkdir -p "$MACOS" "$RESOURCES"
 
 cp "$BIN_PATH/$APP_NAME" "$MACOS/$APP_NAME"
 cp "Bundle/Info.plist" "$CONTENTS/Info.plist"
+if [ -f "Bundle/AppIcon.icns" ]; then
+    cp "Bundle/AppIcon.icns" "$RESOURCES/AppIcon.icns"
+fi
 
 # Copy SwiftPM-emitted resource bundles (e.g. KeyboardShortcuts assets) next to the binary.
 for bundle in "$BIN_PATH"/*.bundle; do

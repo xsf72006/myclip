@@ -4,39 +4,57 @@ struct SettingsView: View {
     @ObservedObject var model: SettingsModel
 
     private let presets: [(label: String, spec: HotKeySpec)] = [
-        ("⌘⇧C",  HotKeySpec(key: .c, modifiers: [.command, .shift])),
-        ("⌘⇧V",  HotKeySpec(key: .v, modifiers: [.command, .shift])),
-        ("⌘⌥V",  HotKeySpec(key: .v, modifiers: [.command, .option])),
+        ("⌘⇧C",     HotKeySpec(key: .c,     modifiers: [.command, .shift])),
+        ("⌘⇧V",     HotKeySpec(key: .v,     modifiers: [.command, .shift])),
+        ("⌘⌥V",     HotKeySpec(key: .v,     modifiers: [.command, .option])),
         ("⌃⇧Space", HotKeySpec(key: .space, modifiers: [.control, .shift]))
     ]
 
     var body: some View {
-        Form {
-            Section("Toggle myclip") {
-                Text("Current: \(model.current.description)")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Toggle Shortcut")
+                .font(.headline)
 
-                HStack {
+            HStack(spacing: 6) {
+                Text("Current:")
+                    .foregroundStyle(.secondary)
+                Text(model.current.description)
+                    .font(.system(.body, design: .monospaced))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Presets")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
                     ForEach(presets, id: \.label) { preset in
                         Button(preset.label) { model.set(preset.spec) }
                             .buttonStyle(.bordered)
                     }
                 }
+            }
 
-                HStack {
-                    TextField("Custom (e.g. command+shift+c)", text: $model.draft)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Custom")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    TextField("e.g. command+shift+c", text: $model.draft)
                         .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 240)
                     Button("Apply") { model.applyDraft() }
                         .disabled(HotKeySpec.parse(model.draft) == nil)
                 }
-                Text("Modifiers: command, shift, option, control · plus one letter / number / space.")
+                Text("Modifiers: command, shift, option, control · plus one letter, number, or space.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+
+            Spacer(minLength: 0)
         }
         .padding(20)
-        .frame(width: 420)
+        .frame(width: 460, height: 280)
     }
 }
 

@@ -1,4 +1,7 @@
-.PHONY: build run install uninstall clean
+.PHONY: build run install uninstall clean icon
+
+icon:
+	@swift scripts/generate-icon.swift
 
 build:
 	@bash scripts/build-app.sh
