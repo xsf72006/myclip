@@ -6,6 +6,10 @@ final class PanelCoordinator: ObservableObject {
 
     @Published var query: String = ""
     @Published var selection: ClipItem.ID?
+    /// Set only by keyboard navigation so the list can scroll the focused row
+    /// into view. Hover leaves this nil on purpose — otherwise the list would
+    /// jump around as the cursor sweeps across rows.
+    @Published var scrollTarget: ClipItem.ID?
     /// When true (and no search query), the list shows all stored items
     /// instead of the first `defaultVisible`. Reset to false on every show.
     @Published var showAll: Bool = false
@@ -13,6 +17,13 @@ final class PanelCoordinator: ObservableObject {
     /// to re-focus the search field on each show (onAppear may not re-fire
     /// when the panel is hidden + shown without being recreated).
     @Published var focusToken: Int = 0
+
+    /// False until the mouse actually moves after a show. Hover-to-select is
+    /// gated on this so the first row stays selected on open even when the
+    /// cursor happens to sit over the list. Deliberately NOT @Published —
+    /// it's flipped on every mouse-moved event and read imperatively inside
+    /// `.onHover`, so publishing it would churn the view on every move.
+    var hoverArmed: Bool = false
 
     /// Items after search filter is applied but before the visibility cap.
     func matchedItems(from items: [ClipItem]) -> [ClipItem] {
@@ -40,6 +51,7 @@ final class PanelCoordinator: ObservableObject {
         let idx = visible.firstIndex(where: { $0.id == selection }) ?? 0
         let next = max(0, min(visible.count - 1, idx + delta))
         selection = visible[next].id
+        scrollTarget = visible[next].id
     }
 
     func ensureValidSelection(in items: [ClipItem]) {

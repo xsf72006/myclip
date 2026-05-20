@@ -37,6 +37,10 @@ final class PanelController {
 
         coordinator.query = ""
         coordinator.showAll = false
+        // Always open on the first (newest) row, not wherever we left off last
+        // time. nil + ensureValidSelection snaps selection to visible.first.
+        coordinator.selection = nil
+        coordinator.hoverArmed = false
         coordinator.ensureValidSelection(in: store.items)
         coordinator.focusToken &+= 1
 
@@ -49,7 +53,7 @@ final class PanelController {
         }
 
         if eventMonitor == nil {
-            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .mouseMoved]) { [weak self] event in
                 self?.handle(event) ?? event
             }
         }
@@ -64,10 +68,23 @@ final class PanelController {
             NSEvent.removeMonitor(m)
             eventMonitor = nil
         }
+        // Hand focus back to whatever app was frontmost when we opened, so its
+        // text caret comes alive again. Covers Esc (and Copy); the paste path
+        // re-activates prev itself before posting ⌘V, so this is harmless there.
+        if let prev = previousApp,
+           prev.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            prev.activate()
+        }
     }
 
     private func handle(_ event: NSEvent) -> NSEvent? {
         guard panel?.isVisible == true else { return event }
+        // First real mouse movement after a show arms hover-to-select. Pass the
+        // event through untouched so SwiftUI's hover tracking still works.
+        if event.type == .mouseMoved {
+            coordinator.hoverArmed = true
+            return event
+        }
         switch event.keyCode {
         case 53:                     // Escape
             hide()
@@ -274,6 +291,7 @@ final class PanelController {
         panel.isMovableByWindowBackground = true
         panel.level = .floating
         panel.hidesOnDeactivate = true
+        panel.acceptsMouseMovedEvents = true   // needed for hover-arming
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         return panel
     }

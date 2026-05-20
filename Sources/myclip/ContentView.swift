@@ -107,31 +107,63 @@ struct ContentView: View {
     }
 
     private var list: some View {
-        List(selection: $coordinator.selection) {
-            ForEach(visible) { item in
-                HStack(spacing: 8) {
-                    Image(systemName: item.kind == .image ? "photo" : "doc.text")
-                        .foregroundStyle(.secondary)
-                    Text(item.displayTitle)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+        ScrollViewReader { proxy in
+            List {
+                ForEach(visible) { item in
+                    row(for: item)
                 }
-                .tag(Optional(item.id))
-                .contextMenu {
-                    Button("Paste into previous app") { onPaste(item) }
-                    Button("Copy")                    { onCopy(item) }
-                    Divider()
-                    Button("Remove", role: .destructive) { store.remove(item) }
+            }
+            .listStyle(.sidebar)
+            .onChange(of: coordinator.scrollTarget) { _, target in
+                if let target { proxy.scrollTo(target) }
+            }
+            .overlay(alignment: .center) {
+                if visible.isEmpty {
+                    Text(coordinator.query.isEmpty ? "No history yet" : "No matches")
+                        .foregroundStyle(.secondary)
+                        .padding()
                 }
             }
         }
-        .listStyle(.sidebar)
-        .overlay(alignment: .center) {
-            if visible.isEmpty {
-                Text(coordinator.query.isEmpty ? "No history yet" : "No matches")
-                    .foregroundStyle(.secondary)
-                    .padding()
+    }
+
+    @ViewBuilder
+    private func row(for item: ClipItem) -> some View {
+        let selected = coordinator.selection == item.id
+        HStack(spacing: 8) {
+            Image(systemName: item.kind == .image ? "photo" : "doc.text")
+                .foregroundStyle(selected ? Color.white : .secondary)
+            Text(item.displayTitle)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(selected ? Color.white : .primary)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())          // whole row, incl. trailing gap, is the target
+        .onHover { hovering in
+            // Hover drives selection (and the preview), but only once the user
+            // has actually moved the mouse — keeps row 1 selected on open.
+            if hovering, coordinator.hoverArmed {
+                coordinator.selection = item.id
             }
+        }
+        .onTapGesture { onPaste(item) }     // single click pastes + closes
+        .listRowBackground(rowBackground(for: item))
+        .contextMenu {
+            Button("Paste into previous app") { onPaste(item) }
+            Button("Copy")                    { onCopy(item) }
+            Divider()
+            Button("Remove", role: .destructive) { store.remove(item) }
+        }
+    }
+
+    @ViewBuilder
+    private func rowBackground(for item: ClipItem) -> some View {
+        if coordinator.selection == item.id {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.accentColor.opacity(0.85))
+        } else {
+            Color.clear
         }
     }
 
