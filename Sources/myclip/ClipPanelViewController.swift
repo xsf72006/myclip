@@ -144,7 +144,6 @@ final class ClipPanelViewController: NSViewController {
         let root = DSBackgroundView()
         root.fill = DSPalette.surfaceWindow
         view = root
-        view.translatesAutoresizingMaskIntoConstraints = false
         buildLayout()
         wireBindings()
     }
