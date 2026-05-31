@@ -20,6 +20,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Package.swift uses a local path dependency on ../design-system/swift
+      # (the canonical DesignSystem package lives in its own repo, in a swift/
+      # subdirectory — SwiftPM can't depend on a subdir via a git URL). The
+      # runner only checks out myclip, so clone design-system as a sibling at
+      # the path SwiftPM expects: $GITHUB_WORKSPACE/../design-system.
+      - name: Checkout design-system (sibling for SwiftPM path dependency)
+        run: git clone --depth 1 https://github.com/xsf72006/design-system.git ../design-system
+
       - name: Swift version
         run: swift --version
 
