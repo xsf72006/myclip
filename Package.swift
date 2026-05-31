@@ -8,15 +8,20 @@ let package = Package(
         .executable(name: "myclip", targets: ["myclip"])
     ],
     dependencies: [
-        .package(url: "https://github.com/soffes/HotKey", .upToNextMinor(from: "0.2.1"))
+        .package(url: "https://github.com/soffes/HotKey", .upToNextMinor(from: "0.2.1")),
+        .package(path: "../design-system/swift")
     ],
     targets: [
         .executableTarget(
             name: "myclip",
             dependencies: [
-                .product(name: "HotKey", package: "HotKey")
+                .product(name: "HotKey", package: "HotKey"),
+                .product(name: "DesignSystem", package: "swift")
             ],
-            path: "Sources/myclip"
+            path: "Sources/myclip",
+            resources: [
+                .copy("Resources/Fonts")
+            ]
         )
     ]
 )
