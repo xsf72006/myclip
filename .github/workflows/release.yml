@@ -11,7 +11,13 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    # macos-26 matches the local dev toolchain (macOS 26 SDK / Swift 6.x).
+    # The older macos-14 image (macOS 14 SDK / Swift 5.10) linked the binary
+    # against an SDK whose NSTextView didn't resolve nameless dynamic colors,
+    # so the text preview body rendered invisibly for everyone — a build-time
+    # bug, not a user-environment one. Building against the current SDK fixes
+    # it at the source.
+    runs-on: macos-26
     outputs:
       version: ${{ steps.zip.outputs.version }}
       sha: ${{ steps.zip.outputs.sha }}
