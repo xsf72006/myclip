@@ -40,12 +40,11 @@ final class PanelController {
         self.panel = panel
 
         coordinator.query = ""
-        coordinator.showAll = false
         // Always open on the first (newest) row, not wherever we left off last
-        // time. nil + ensureValidSelection snaps selection to visible.first.
+        // time. nil + ensureValidSelection snaps selection to the first row.
         coordinator.selection = nil
         coordinator.hoverArmed = false
-        coordinator.ensureValidSelection(in: store.items)
+        coordinator.ensureValidSelection(in: store.items, query: coordinator.query)
         coordinator.focusToken &+= 1
 
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) })

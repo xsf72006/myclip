@@ -125,7 +125,6 @@ final class ClipPanelViewController: NSViewController {
     private let trashButton = NSButton()
     private let tableView = NSTableView()
     private let tableScroll = NSScrollView()
-    private let showAllButton = NSButton()
     private let emptyLabel = NSTextField(labelWithString: "")
     private lazy var preview = PreviewPaneView(store: store)
 
@@ -189,25 +188,14 @@ final class ClipPanelViewController: NSViewController {
         emptyLabel.alignment = .center
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        showAllButton.bezelStyle = .inline
-        showAllButton.isBordered = false
-        showAllButton.target = self
-        showAllButton.action = #selector(showAll)
-        showAllButton.translatesAutoresizingMaskIntoConstraints = false
-        showAllButton.isHidden = true
-
         let listColumn = NSView()
         listColumn.translatesAutoresizingMaskIntoConstraints = false
-        listColumn.addSubview(tableScroll); listColumn.addSubview(emptyLabel); listColumn.addSubview(showAllButton)
+        listColumn.addSubview(tableScroll); listColumn.addSubview(emptyLabel)
         NSLayoutConstraint.activate([
             tableScroll.topAnchor.constraint(equalTo: listColumn.topAnchor),
             tableScroll.leadingAnchor.constraint(equalTo: listColumn.leadingAnchor),
             tableScroll.trailingAnchor.constraint(equalTo: listColumn.trailingAnchor),
-            tableScroll.bottomAnchor.constraint(equalTo: showAllButton.topAnchor),
-            showAllButton.leadingAnchor.constraint(equalTo: listColumn.leadingAnchor),
-            showAllButton.trailingAnchor.constraint(equalTo: listColumn.trailingAnchor),
-            showAllButton.bottomAnchor.constraint(equalTo: listColumn.bottomAnchor),
-            showAllButton.heightAnchor.constraint(equalToConstant: 26),
+            tableScroll.bottomAnchor.constraint(equalTo: listColumn.bottomAnchor),
             emptyLabel.centerXAnchor.constraint(equalTo: tableScroll.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: tableScroll.centerYAnchor)
         ])
@@ -263,9 +251,13 @@ final class ClipPanelViewController: NSViewController {
     }
 
     private func wireBindings() {
+        // Use the values the publishers deliver — NOT coordinator.query read
+        // imperatively. @Published emits in willSet, so during this sink the
+        // stored coordinator.query is still the *previous* keystroke; reading
+        // it would render the list one character behind what was typed.
         store.$items
-            .combineLatest(coordinator.$query, coordinator.$showAll)
-            .sink { [weak self] _, _, _ in self?.reload() }
+            .combineLatest(coordinator.$query)
+            .sink { [weak self] items, query in self?.reload(items: items, query: query) }
             .store(in: &bag)
         coordinator.$selection
             .sink { [weak self] sel in self?.applySelection(sel) }
@@ -279,25 +271,21 @@ final class ClipPanelViewController: NSViewController {
             .store(in: &bag)
     }
 
-    private func reload() {
-        rows = coordinator.visibleItems(from: store.items)
+    private func reload(items: [ClipItem], query: String) {
+        rows = coordinator.matchedItems(from: items, query: query)
         tableView.reloadData()
-        clearSearchButton.isHidden = coordinator.query.isEmpty
-        trashButton.isHidden = store.items.isEmpty
+        clearSearchButton.isHidden = query.isEmpty
+        trashButton.isHidden = items.isEmpty
         emptyLabel.isHidden = !rows.isEmpty
-        emptyLabel.stringValue = coordinator.query.isEmpty ? "No history yet" : "No matches"
-        let canExpand = coordinator.canExpand(in: store.items)
-        showAllButton.isHidden = !canExpand
-        if canExpand {
-            showAllButton.attributedTitle = NSAttributedString(
-                string: "Show all \(store.items.count) items",
-                attributes: [.font: NSFont.dsSans(DSType.Size.xs, .medium),
-                             .foregroundColor: DSPalette.text2])
-        }
-        // Snap selection to the first visible row when the current one fell out
-        // of view (e.g. after filtering or clearing the query) so keyboard nav
-        // and the preview stay consistent with what's shown.
-        coordinator.ensureValidSelection(in: store.items)
+        emptyLabel.stringValue = query.isEmpty ? "No history yet" : "No matches"
+        // Snap selection to the first row when the current one fell out of the
+        // filtered set (e.g. after typing or clearing the query) so keyboard
+        // nav and the preview stay consistent with what's shown.
+        coordinator.ensureValidSelection(in: items, query: query)
+        // Not redundant with the $selection sink: when the selection is
+        // unchanged (the common reload — e.g. a new clip arrives, row 0 stays
+        // selected) that sink doesn't fire, so the freshly reloaded rows would
+        // go un-styled without this explicit re-apply.
         applySelection(coordinator.selection)
     }
 
@@ -319,6 +307,11 @@ final class ClipPanelViewController: NSViewController {
     }
 
     private func focusSearch() {
+        // Each open starts clean. PanelController.show() already reset the model
+        // query to ""; clear the editor text to match so a prior search doesn't
+        // linger over the full list. Programmatic stringValue changes don't fire
+        // controlTextDidChange, so this won't re-trigger onChange.
+        search.field.stringValue = ""
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
             guard let self else { return }
             self.view.window?.makeFirstResponder(self.search.field)
@@ -326,7 +319,6 @@ final class ClipPanelViewController: NSViewController {
     }
 
     @objc private func clearSearch() { coordinator.query = ""; search.field.stringValue = "" }
-    @objc private func showAll() { coordinator.showAll = true }
     @objc private func rowClicked() {
         let r = tableView.clickedRow
         guard rows.indices.contains(r) else { return }
