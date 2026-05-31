@@ -10,9 +10,6 @@ final class PreviewPaneView: NSView {
     private let textView = NSTextView()
     private let imageView = NSImageView()
     private let emptyLabel = NSTextField(labelWithString: "No selection")
-    /// The text body currently shown (nil for image/empty). Kept so we can
-    /// re-render with a freshly resolved color when the appearance flips.
-    private var shownText: String?
 
     init(store: HistoryStore) {
         self.store = store
@@ -29,9 +26,6 @@ final class PreviewPaneView: NSView {
     }
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance(); needsDisplay = true
-        // Re-resolve the body text color for the new appearance (it's baked
-        // into the attributed string, so it doesn't auto-flip like a label's).
-        if let shownText { applyText(shownText) }
     }
 
     private func buildLayout() {
@@ -103,7 +97,6 @@ final class PreviewPaneView: NSView {
     func show(_ item: ClipItem?) {
         guard let item else {
             kindLabel.stringValue = ""; dateLabel.stringValue = ""
-            shownText = nil
             scroll.isHidden = true; imageView.isHidden = true; emptyLabel.isHidden = false
             return
         }
@@ -113,32 +106,10 @@ final class PreviewPaneView: NSView {
         switch item.kind {
         case .text:
             scroll.isHidden = false; imageView.isHidden = true
-            applyText(item.text ?? "")
+            textView.string = item.text ?? ""
         case .image:
-            shownText = nil
             scroll.isHidden = true; imageView.isHidden = false
             imageView.image = store.image(for: item)
         }
-    }
-
-    /// Set the body text as an explicit attributed string. Relying on
-    /// `textView.string` + the property-set `font`/`textColor` is fragile:
-    /// on some AppKit builds (older SDK link) the text view doesn't apply
-    /// those to text set via `.string`, and a *nameless* dynamic `NSColor`
-    /// isn't resolved in that path — so the body rendered invisibly while
-    /// NSTextField labels (same tokens) were fine. Attributing every glyph
-    /// with the font and a color resolved for the current appearance is
-    /// build-independent.
-    private func applyText(_ s: String) {
-        shownText = s
-        var color = DSPalette.text1
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            color = DSPalette.text1.usingColorSpace(.sRGB) ?? DSPalette.text1
-        }
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.dsMono(DSType.Size.sm),
-            .foregroundColor: color,
-        ]
-        textView.textStorage?.setAttributedString(NSAttributedString(string: s, attributes: attrs))
     }
 }
