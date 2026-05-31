@@ -80,7 +80,7 @@ final class PanelController {
     private func handle(_ event: NSEvent) -> NSEvent? {
         guard panel?.isVisible == true else { return event }
         // First real mouse movement after a show arms hover-to-select. Pass the
-        // event through untouched so SwiftUI's hover tracking still works.
+        // event through untouched so the table's tracking areas still see it.
         if event.type == .mouseMoved {
             coordinator.hoverArmed = true
             return event

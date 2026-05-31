@@ -58,17 +58,14 @@ final class DSSearchFieldContainer: NSView, NSTextFieldDelegate {
     func controlTextDidEndEditing(_ obj: Notification) { focused = false; needsDisplay = true }
 }
 
-// MARK: - Row view: square ink fill when selected, hover overlay otherwise
+// MARK: - Row view: square ink fill when selected
 
 final class ClipRowView: NSTableRowView {
     var dsSelected = false { didSet { if oldValue != dsSelected { needsDisplay = true } } }
-    var dsHovered  = false { didSet { if oldValue != dsHovered  { needsDisplay = true } } }
 
     override func drawBackground(in dirtyRect: NSRect) {
         if dsSelected {
             DSPalette.ink.setFill(); bounds.fill()
-        } else if dsHovered {
-            DSPalette.hoverOverlay.setFill(); bounds.fill()
         }
     }
     override func drawSelection(in dirtyRect: NSRect) { /* selection drawn in drawBackground */ }
@@ -370,20 +367,24 @@ extension ClipPanelViewController: NSTableViewDataSource, NSTableViewDelegate {
     }
 
     func tableView(_ tableView: NSTableView, didAdd rowView: NSTableRowView, forRow row: Int) {
+        // A per-row tracking area gives us mouseEntered. We do NOT bake the row
+        // index in: it goes stale after reloadData()/row reuse and would select
+        // the wrong clip. mouseEntered recomputes the row from the cursor.
         rowView.trackingAreas.forEach { rowView.removeTrackingArea($0) }
         let ta = NSTrackingArea(rect: rowView.bounds,
                                 options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
                                 owner: self,
-                                userInfo: ["row": row])
+                                userInfo: nil)
         rowView.addTrackingArea(ta)
     }
 }
 
 extension ClipPanelViewController {
     override func mouseEntered(with event: NSEvent) {
-        guard coordinator.hoverArmed,
-              let info = event.trackingArea?.userInfo as? [String: Int],
-              let row = info["row"], rows.indices.contains(row) else { return }
+        guard coordinator.hoverArmed else { return }
+        let point = tableView.convert(event.locationInWindow, from: nil)
+        let row = tableView.row(at: point)
+        guard rows.indices.contains(row) else { return }
         coordinator.selection = rows[row].id
     }
 }
