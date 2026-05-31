@@ -1,4 +1,3 @@
-import SwiftUI
 import AppKit
 import ServiceManagement
 
@@ -96,15 +95,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let hosting = NSHostingController(rootView: SettingsView(model: settingsModel))
+            let vc = SettingsViewController(model: settingsModel)
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 460, height: 280),
+                contentRect: NSRect(x: 0, y: 0, width: 460, height: 340),
                 styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
             window.title = "myclip"
-            window.contentViewController = hosting
+            window.contentViewController = vc
             window.center()
             window.isReleasedWhenClosed = false
             settingsWindow = window
