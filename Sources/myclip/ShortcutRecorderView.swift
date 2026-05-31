@@ -33,6 +33,13 @@ final class ShortcutRecorderView: NSControl {
     }
     required init?(coder: NSCoder) { fatalError("no coder") }
 
+    deinit { if let m = monitor { NSEvent.removeMonitor(m) } }
+
+    /// Clicks anywhere on the control (incl. the trailing glyph) toggle recording.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        bounds.contains(convert(point, from: superview)) ? self : nil
+    }
+
     override var isFlipped: Bool { true }
     override func draw(_ dirtyRect: NSRect) {
         DSPalette.surfaceInput.setFill(); bounds.fill()
@@ -55,7 +62,11 @@ final class ShortcutRecorderView: NSControl {
 
     override func mouseDown(with event: NSEvent) { recording ? stop() : start() }
 
+    /// Reset to idle and tear down the key monitor (e.g. when Settings closes).
+    func cancelRecording() { stop() }
+
     private func start() {
+        guard monitor == nil else { return }
         recording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
             self?.handle(e)
