@@ -21,12 +21,23 @@ jobs:
         uses: actions/checkout@v6
 
       # Package.swift uses a local path dependency on ../design-system/swift
-      # (the canonical DesignSystem package lives in its own repo, in a swift/
-      # subdirectory — SwiftPM can't depend on a subdir via a git URL). The
-      # runner only checks out myclip, so clone design-system as a sibling at
-      # the path SwiftPM expects: $GITHUB_WORKSPACE/../design-system.
-      - name: Checkout design-system (sibling for SwiftPM path dependency)
-        run: git clone --depth 1 https://github.com/xsf72006/design-system.git ../design-system
+      # (the canonical DesignSystem package lives in its own PRIVATE repo, in a
+      # swift/ subdirectory — SwiftPM can't depend on a subdir via a git URL).
+      # The runner only checks out myclip, so clone design-system as a sibling
+      # at the path SwiftPM expects ($GITHUB_WORKSPACE/../design-system), using
+      # a read-only PAT and pinned to a reviewed, immutable SHA. To upgrade
+      # DesignSystem, bump DS_PIN below in a reviewed commit — same discipline
+      # as bumping a pinned dependency in Package.resolved.
+      - name: Checkout design-system (private sibling for SwiftPM path dependency)
+        env:
+          DS_READ_TOKEN: ${{ secrets.DS_READ_TOKEN }}
+          DS_PIN: 9bc6017c7c116e95d0b6376c3bd4ef8b568a73c1
+        run: |
+          git clone --no-checkout \
+            "https://x-access-token:${DS_READ_TOKEN}@github.com/xsf72006/design-system.git" \
+            ../design-system
+          git -C ../design-system checkout --quiet "$DS_PIN"
+          echo "design-system pinned at $(git -C ../design-system rev-parse HEAD)"
 
       - name: Swift version
         run: swift --version
