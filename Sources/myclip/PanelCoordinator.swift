@@ -13,16 +13,16 @@ final class PanelCoordinator: ObservableObject {
     /// When true (and no search query), the list shows all stored items
     /// instead of the first `defaultVisible`. Reset to false on every show.
     @Published var showAll: Bool = false
-    /// Increments every time the panel is shown; ContentView observes this
-    /// to re-focus the search field on each show (onAppear may not re-fire
-    /// when the panel is hidden + shown without being recreated).
+    /// Increments every time the panel is shown; ClipPanelViewController
+    /// observes this (via Combine) to re-focus the search field on each show,
+    /// since the panel is reused — not recreated — between shows.
     @Published var focusToken: Int = 0
 
     /// False until the mouse actually moves after a show. Hover-to-select is
     /// gated on this so the first row stays selected on open even when the
     /// cursor happens to sit over the list. Deliberately NOT @Published —
-    /// it's flipped on every mouse-moved event and read imperatively inside
-    /// `.onHover`, so publishing it would churn the view on every move.
+    /// it's flipped on every mouse-moved event and read imperatively in the
+    /// table's mouseEntered, so publishing it would fire needlessly per move.
     var hoverArmed: Bool = false
 
     /// Items after search filter is applied but before the visibility cap.
@@ -32,7 +32,7 @@ final class PanelCoordinator: ObservableObject {
         return items.filter { ($0.text ?? "").lowercased().contains(q) }
     }
 
-    /// What ContentView should actually render: matched items, capped at
+    /// What the panel should actually render: matched items, capped at
     /// `defaultVisible` when no query is active and the user hasn't asked to
     /// expand.
     func visibleItems(from items: [ClipItem]) -> [ClipItem] {
