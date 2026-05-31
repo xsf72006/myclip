@@ -298,7 +298,7 @@ final class PanelController {
 
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 460),
-            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel, .closable],
+            styleMask: [.titled, .fullSizeContentView, .closable],
             backing: .buffered,
             defer: false
         )

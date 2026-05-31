@@ -46,9 +46,15 @@ final class PanelCoordinator: ObservableObject {
     }
 
     func moveSelection(in items: [ClipItem], delta: Int) {
-        let visible = visibleItems(from: items)
+        var visible = visibleItems(from: items)
         guard !visible.isEmpty else { selection = nil; return }
         let idx = visible.firstIndex(where: { $0.id == selection }) ?? 0
+        // Arrowing down past the capped default view expands to the full list,
+        // so keyboard nav reaches every item without clicking "Show all".
+        if delta > 0, idx >= visible.count - 1, canExpand(in: items) {
+            showAll = true
+            visible = visibleItems(from: items)
+        }
         let next = max(0, min(visible.count - 1, idx + delta))
         selection = visible[next].id
         scrollTarget = visible[next].id
