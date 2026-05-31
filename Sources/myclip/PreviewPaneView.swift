@@ -59,6 +59,12 @@ final class PreviewPaneView: NSView {
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.isHidden = true
+        // Never let a large image's intrinsic (pixel) size drive the pane/window:
+        // lowest hug/compression priority so it only ever scales within the pane.
+        imageView.setContentHuggingPriority(.init(1), for: .horizontal)
+        imageView.setContentHuggingPriority(.init(1), for: .vertical)
+        imageView.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        imageView.setContentCompressionResistancePriority(.init(1), for: .vertical)
 
         emptyLabel.font = .dsSans(DSType.Size.sm)
         emptyLabel.textColor = DSPalette.text3

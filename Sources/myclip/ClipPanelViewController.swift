@@ -233,8 +233,9 @@ final class ClipPanelViewController: NSViewController {
             preview.leadingAnchor.constraint(equalTo: midRule.trailingAnchor),
             preview.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             preview.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            view.widthAnchor.constraint(greaterThanOrEqualToConstant: 600),
-            view.heightAnchor.constraint(greaterThanOrEqualToConstant: 360)
+            // Fixed panel size: never resize with preview content (Raycast-style popup).
+            view.widthAnchor.constraint(equalToConstant: 720),
+            view.heightAnchor.constraint(equalToConstant: 460)
         ])
     }
 

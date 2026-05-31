@@ -16,6 +16,9 @@ final class PanelController {
     private var panel: NSPanel?
     private var eventMonitor: Any?
     private var previousApp: NSRunningApplication?
+    /// Invoked at the start of show() so the app can dismiss its other window
+    /// (Settings) first — keeps the panel and Settings mutually exclusive.
+    var onShow: (() -> Void)?
 
     let store: HistoryStore
     let coordinator: PanelCoordinator
@@ -30,6 +33,7 @@ final class PanelController {
     }
 
     func show() {
+        onShow?()
         previousApp = NSWorkspace.shared.frontmostApplication
 
         let panel = panel ?? makePanel()
@@ -74,6 +78,16 @@ final class PanelController {
         if let prev = previousApp,
            prev.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             prev.activate()
+        }
+    }
+
+    /// Order the panel out without handing focus back to the previous app —
+    /// used when another myclip window (Settings) is taking over.
+    func dismissForAppWindow() {
+        panel?.orderOut(nil)
+        if let m = eventMonitor {
+            NSEvent.removeMonitor(m)
+            eventMonitor = nil
         }
     }
 
@@ -280,7 +294,7 @@ final class PanelController {
 
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 460),
-            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel, .resizable, .closable],
+            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel, .closable],
             backing: .buffered,
             defer: false
         )
@@ -294,6 +308,11 @@ final class PanelController {
         panel.hidesOnDeactivate = true
         panel.acceptsMouseMovedEvents = true   // needed for hover-arming
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // Transient popup: hide the traffic-light buttons (they'd otherwise
+        // overlap the search bar under the full-size-content titlebar).
+        panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
         return panel
     }
 }
