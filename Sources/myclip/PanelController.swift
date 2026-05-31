@@ -58,7 +58,11 @@ final class PanelController {
 
         if eventMonitor == nil {
             eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .mouseMoved]) { [weak self] event in
-                self?.handle(event) ?? event
+                // Must return handle()'s result directly: `?? event` would turn a
+                // consumed (nil) key back into a pass-through, leaking Esc/arrows/
+                // Enter to the search field editor.
+                guard let self else { return event }
+                return self.handle(event)
             }
         }
 

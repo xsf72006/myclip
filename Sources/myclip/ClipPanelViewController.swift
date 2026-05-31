@@ -294,6 +294,10 @@ final class ClipPanelViewController: NSViewController {
                 attributes: [.font: NSFont.dsSans(DSType.Size.xs, .medium),
                              .foregroundColor: DSPalette.text2])
         }
+        // Snap selection to the first visible row when the current one fell out
+        // of view (e.g. after filtering or clearing the query) so keyboard nav
+        // and the preview stay consistent with what's shown.
+        coordinator.ensureValidSelection(in: store.items)
         applySelection(coordinator.selection)
     }
 
