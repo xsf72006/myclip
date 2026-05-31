@@ -18,10 +18,7 @@ let package = Package(
                 .product(name: "HotKey", package: "HotKey"),
                 .product(name: "DesignSystem", package: "swift")
             ],
-            path: "Sources/myclip",
-            resources: [
-                .copy("Resources/Fonts")
-            ]
+            path: "Sources/myclip"
         )
     ]
 )

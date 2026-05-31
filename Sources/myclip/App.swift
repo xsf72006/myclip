@@ -21,7 +21,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        Fonts.registerBundled()
         NSApp.setActivationPolicy(.accessory)
         migrateFromLaunchAgentIfNeeded()
         monitor = ClipboardMonitor(store: store)

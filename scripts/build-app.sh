@@ -28,10 +28,18 @@ if [ -f "Bundle/AppIcon.icns" ]; then
     cp "Bundle/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 fi
 
-# Copy SwiftPM-emitted resource bundles (e.g. KeyboardShortcuts assets) next to the binary.
+# Bundle the brand fonts. Info.plist's ATSApplicationFontsPath=Fonts makes
+# macOS auto-register everything under Contents/Resources/Fonts at launch.
+if [ -d "Bundle/Fonts" ]; then
+    cp -R "Bundle/Fonts" "$RESOURCES/Fonts"
+fi
+
+# Copy any SwiftPM-emitted resource bundles into Resources/ (the standard
+# nested-bundle location). They must NOT go in Contents/MacOS/ — codesign
+# --deep rejects a resource bundle sitting beside the main executable.
 for bundle in "$BIN_PATH"/*.bundle; do
     [ -e "$bundle" ] || continue
-    cp -R "$bundle" "$MACOS/"
+    cp -R "$bundle" "$RESOURCES/"
 done
 
 # Ad-hoc sign so Gatekeeper / TCC can identify the bundle stably.
