@@ -12,3 +12,6 @@ Package.resolved
 
 # Personal release runbook — local notes only.
 RUNBOOK.md
+
+# Superpowers workflow artifacts (handover/plans/specs) — keep them local.
+docs/superpowers/
