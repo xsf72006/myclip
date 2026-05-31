@@ -1,5 +1,5 @@
 import AppKit
-import SwiftUI
+import DesignSystem
 import ApplicationServices
 import Carbon.HIToolbox
 
@@ -271,13 +271,12 @@ final class PanelController {
     // MARK: - Panel construction
 
     private func makePanel() -> NSPanel {
-        let content = ContentView(
+        let vc = ClipPanelViewController(
             store: store,
             coordinator: coordinator,
             onPaste: { [weak self] item in self?.pasteItem(item) },
             onCopy:  { [weak self] item in self?.copyItem(item) }
         )
-        let hosting = NSHostingController(rootView: content)
 
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 460),
@@ -285,10 +284,12 @@ final class PanelController {
             backing: .buffered,
             defer: false
         )
-        panel.contentViewController = hosting
+        panel.contentViewController = vc
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
+        panel.isOpaque = true
+        panel.backgroundColor = DSPalette.surfaceWindow
         panel.level = .floating
         panel.hidesOnDeactivate = true
         panel.acceptsMouseMovedEvents = true   // needed for hover-arming
